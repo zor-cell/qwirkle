@@ -5,6 +5,10 @@ import {Shape} from "../../classes/shape";
 import {Color, ColorMapper} from "../../classes/color";
 import {CustomSet} from "../../classes/custom-set";
 import {CustomMap} from "../../classes/custom-map";
+import {HandComponent} from "../hand/hand.component";
+import {Subject} from "rxjs";
+import {RenderService} from "../../services/render.service";
+import {BitfilterService} from "../../services/bitfilter.service";
 
 @Component({
   selector: 'app-game',
@@ -12,30 +16,19 @@ import {CustomMap} from "../../classes/custom-map";
   styleUrl: './game.component.css'
 })
 export class GameComponent implements AfterViewInit {
+  //an event that is triggered when a tile is placed (allows communication with hand component)
+  placeTileEvent: Subject<Tile> = new Subject<Tile>();
+
   @ViewChild('gameCanvas') canvas!: ElementRef<HTMLCanvasElement>;
   private ctx!: CanvasRenderingContext2D;
   private width: number = 0;
   private height: number = 0;
 
   private grid : CustomMap<Position, Tile>;
-  private hand: Tile[] = [];
   private selected: Tile[] = [];
 
-  constructor() {
+  constructor(private renderService: RenderService, private bitfilterService: BitfilterService) {
     this.grid = new CustomMap<Position, Tile>(pos => pos.hash());
-
-    let a = new Tile(new Position(0, 0), Color.ORANGE, Shape.CIRCLE);
-    let b = new Tile(new Position(0, 0), Color.BLUE, Shape.SQUARE);
-    let c = new Tile(new Position(0, 0), Color.PURPLE, Shape.CIRCLE);
-    let d = new Tile(new Position(0, 0), Color.RED, Shape.CIRCLE);
-    let e = new Tile(new Position(0, 0), Color.ORANGE, Shape.STAR4);
-    let f = new Tile(new Position(0, 0), Color.BLUE, Shape.STAR4);
-    this.hand.push(a);
-    this.hand.push(b);
-    this.hand.push(c);
-    this.hand.push(d);
-    this.hand.push(e);
-    this.hand.push(f);
   }
 
   ngAfterViewInit() {
@@ -43,8 +36,14 @@ export class GameComponent implements AfterViewInit {
     this.width = this.canvas.nativeElement.width;
     this.height = this.canvas.nativeElement.height;
 
-    this.initMap();
     this.grid = this.map1();
+
+    this.draw();
+  }
+
+  //gets the selected tiles from the hand component
+  getSelected(selected: Tile[]) {
+    this.selected = selected;
     this.draw();
   }
 
@@ -55,22 +54,6 @@ export class GameComponent implements AfterViewInit {
 
     if(mousePos.x < 0 || mousePos.x > this.width || mousePos.y < 0 || mousePos.y > this.height) return;
 
-    //check for hand tile selection
-    for(let tile of this.hand) {
-      let canvasPos = PositionMapper.gridToCanvasPosition(tile.position);
-      if(canvasPos.containsPoint(mousePos)) {
-        let index = this.selected.indexOf(tile);
-        if(index === -1) {
-          this.selected.push(tile);
-        } else {
-          this.selected.splice(index, 1);
-        }
-
-        this.draw();
-        break;
-      }
-    }
-
     //check for tile placing
     if(this.selected.length === 0) return;
 
@@ -79,28 +62,14 @@ export class GameComponent implements AfterViewInit {
     for(let pos of legalMoves.values()) {
       let canvasPos = PositionMapper.gridToCanvasPosition(pos);
       if(canvasPos.containsPoint(mousePos)) {
-        this.selected.splice(0, 1);
-        this.hand.splice(this.hand.indexOf(temp), 1);
         this.placeTile(pos, temp);
+        this.placeTileEvent.next(temp);
         break;
       }
     }
   }
 
-  private placeTile(pos: Position, tile: Tile) {
-    tile.position = pos;
-
-    let score = this.computeScore(tile.position, tile);
-//    console.log(score);
-    this.grid.add(tile.position, tile);
-
-    //console.log(this.selected, this.hand);
-
-    this.draw();
-  }
-
-
-  private draw() {
+  draw() {
     this.ctx.clearRect(0, 0, this.width, this.height);
 
     //draw tiles
@@ -113,7 +82,7 @@ export class GameComponent implements AfterViewInit {
     //draw free spots
     let free = this.getFreePositions();
     for(let pos of free.values()) {
-      this.drawCell(pos, "#0aa");
+      this.renderService.drawCellFromGridPos(this.ctx, pos, {color: "#0aa"});
     }
 
     //draw legal spots
@@ -121,31 +90,17 @@ export class GameComponent implements AfterViewInit {
       let temp = this.selected[0];
       let legal = this.getLegalPositions(temp);
       for (let pos of legal.values()) {
-        this.drawCell(pos, "#f00", true);
-      }
-    }
-
-    //draw hand
-    for(let j = 0;j < this.hand.length;j++) {
-      let tile = this.hand[j];
-      tile.position = new Position(0.1, j + 0.1 * (j + 1));
-      tile.show(this.ctx);
-
-      if(this.selected.includes(tile)) {
-        this.drawCell(tile.position, "#f00");
+        this.renderService.drawCellFromGridPos(this.ctx, pos, {color: "#f00", clear: true});
       }
     }
   }
 
-  private drawCell(pos: Position, color: string = "#000", clear: boolean = false) {
-    let canvasPosition = PositionMapper.gridToCanvasPosition(pos);
+  //places a tile at the given position
+  private placeTile(pos: Position, tile: Tile) {
+    tile.position = pos;
+    this.grid.add(tile.position, tile);
 
-    if(clear) this.ctx.clearRect(canvasPosition.x, canvasPosition.y, Tile.SIZE, Tile.SIZE)
-
-    this.ctx.beginPath();
-    this.ctx.rect(canvasPosition.x, canvasPosition.y, Tile.SIZE, Tile.SIZE);
-    this.ctx.strokeStyle = color;
-    this.ctx.stroke();
+    this.draw();
   }
 
   //retrieves all open raster spots, ie all neighbor tile fields that are not occupied
@@ -166,12 +121,13 @@ export class GameComponent implements AfterViewInit {
     return free;
   }
 
+  //all legal positions for a single tile
   private getLegalPositions(tile: Tile): CustomSet<Position> {
     let legal = new CustomSet<Position>(pos => pos.hash());
 
     let free = this.getFreePositions();
     for(let pos of free.values()) {
-      if(this.isLegalPosition(pos, tile)) {
+      if(this.computeMoveScore(pos, tile) > 0) {
         legal.add(pos);
       }
     }
@@ -179,46 +135,9 @@ export class GameComponent implements AfterViewInit {
     return legal;
   }
 
-  //indicates whether the tile placement would be valid
-  private isLegalPosition(position: Position, tile: Tile): boolean {
-    //cannot be placed if position is already occupied
-    if(this.grid.has(position)) return false;
-
-    //go through all 4 directions from the tile
-    let di = [-1, 1, 0, 0];
-    let dj = [0, 0, -1, 1];
-    for(let d = 0;d < 4;d++) {
-      let pos: Position = new Position(position.i + di[d],position.j + dj[d]);
-      let color = Color.NONE;
-      let shape = Shape.NONE;
-
-      //continue if neighbor is empty
-      if(!this.grid.has(pos)) continue;
-
-      //accumulate neighbors colors and shapes in current direction
-      while(this.grid.has(pos)) {
-        let neighbor = this.grid.get(pos)!;
-
-        color |= neighbor.color;
-        shape |= neighbor.shape;
-
-        pos = new Position(pos.i + di[d],pos.j + dj[d]);
-      }
-
-      //the neighbors in the current direction have: the same color as the tile, do not contain the shape of the tile
-      let sameColorMissingShape = color === tile.color && (shape & tile.shape) === 0;
-      //the neighbors in the current direction have: the same shape as the tile, do not contain the color of the tile
-      let sameShapeMissingColor = shape === tile.shape && (color & tile.color) === 0;
-
-      //if the tile does not match color or shape, it cannot be placed
-      if(!sameColorMissingShape && !sameShapeMissingColor) return false;
-    }
-
-    return true;
-  }
-
-  //indicates whether the tile placement would be valid
-  private computeScore(position: Position, tile: Tile): number {
+  //computes the score a given move achieves
+  //if the score is 0, the move is invalid
+  private computeMoveScore(position: Position, tile: Tile): number {
     //cannot be placed if position is already occupied
     if(this.grid.has(position)) return 0;
 
@@ -244,17 +163,11 @@ export class GameComponent implements AfterViewInit {
         pos = new Position(pos.i + di[d],pos.j + dj[d]);
       }
 
-      score += ColorMapper.bitCount(color);
-      score += ColorMapper.bitCount(shape);
+      score += this.bitfilterService.setBitCount(color);
+      score += this.bitfilterService.setBitCount(shape);
       if(score === 6) score *= 2;
 
-      //the neighbors in the current direction have: the same color as the tile, do not contain the shape of the tile
-      let sameColorMissingShape = color === tile.color && (shape & tile.shape) === 0;
-      //the neighbors in the current direction have: the same shape as the tile, do not contain the color of the tile
-      let sameShapeMissingColor = shape === tile.shape && (color & tile.color) === 0;
-
-      //if the tile does not match color or shape, it cannot be placed
-      if(!sameColorMissingShape && !sameShapeMissingColor) return 0;
+      if(!this.bitfilterService.isCompatible(color, shape, tile.color, tile.shape)) return 0;
     }
 
     return score;
