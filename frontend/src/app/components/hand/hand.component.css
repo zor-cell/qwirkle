@@ -1,0 +1,8 @@
+#handCanvas {
+    border: 1px solid black;
+}
+
+.canvasSubContainer {
+    display: flex;
+    justify-content: center;
+}
