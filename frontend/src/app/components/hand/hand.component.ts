@@ -20,9 +20,9 @@ export class HandComponent implements AfterViewInit {
 
   @ViewChild('handCanvas') canvas!: ElementRef<HTMLCanvasElement>;
   private ctx!: CanvasRenderingContext2D;
-
   private width: number = 0;
   private height: number = 0;
+
   private hand: Tile[] = [];
   private selected: Tile[] = [];
 

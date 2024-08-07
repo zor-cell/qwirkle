@@ -1,6 +1,6 @@
 .canvasContainer {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
 
     gap: 10px;
@@ -8,15 +8,15 @@
     margin-top: 50px;
 }
 
+.canvasContainer2 {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    gap: 10px;
+}
+
 .canvasSubContainer {
     display: flex;
     justify-content: center;
-}
-
-#gameCanvas {
-    border: 1px solid black;
-}
-
-#handCanvas {
-    border: 1px solid black;
 }

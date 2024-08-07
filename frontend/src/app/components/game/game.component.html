@@ -1,6 +1,9 @@
 <div class="canvasContainer">
-    <app-hand [placeTileEvent]="placeTileEvent.asObservable()" (selectedEvent)="getSelected($event)"></app-hand>
-    <div class="canvasSubContainer">
-    <canvas #gameCanvas id="gameCanvas" width="500" height="500" (click)="mouseClick($event)"></canvas>
+    <div class="canvasContainer2">
+        <app-hand [placeTileEvent]="placeTileEvent.asObservable()" (selectedEvent)="getSelected($event)"></app-hand>
+        <div class="canvasSubContainer">
+            <canvas #gameCanvas class="canvas" width="500" height="500" (click)="mouseClick($event)"></canvas>
+        </div>
     </div>
+    <app-stack></app-stack>
 </div>
