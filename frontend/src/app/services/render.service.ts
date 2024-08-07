@@ -22,6 +22,9 @@ export class RenderService {
       ctx.fillStyle = options.color;
       ctx.strokeStyle = options.color;
     }
+    if(options.lineWidth) {
+      ctx.lineWidth = options.lineWidth;
+    }
 
     ctx.beginPath();
     ctx.rect(pos.x, pos.y, Tile.SIZE, Tile.SIZE);

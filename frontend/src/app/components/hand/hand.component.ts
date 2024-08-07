@@ -57,7 +57,8 @@ export class HandComponent implements AfterViewInit {
 
       if(this.selected.includes(tile)) {
         //highlight selected hand tiles
-        this.renderService.drawCellFromGridPos(this.ctx, tile.position, {color: "#f00"});
+        this.renderService.drawCellFromGridPos(this.ctx, tile.position, {color: "#f00", lineWidth: 3});
+        //tile.show(this.ctx, {opacity: 0.8})
       } else {
         //grey out incompatible hand tiles
         if (this.selected.length > 0) {
