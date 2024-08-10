@@ -8,6 +8,7 @@ import { HandComponent } from './components/hand/hand.component';
 import { StackComponent } from './components/stack/stack.component';
 import { EventHandlerComponent } from './components/event-handler/event-handler.component';
 import { CameraComponent } from './components/camera/camera.component';
+import {NgbModule} from "@ng-bootstrap/ng-bootstrap";
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { CameraComponent } from './components/camera/camera.component';
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule
+    AppRoutingModule,
+    NgbModule
   ],
   providers: [],
   bootstrap: [AppComponent]

@@ -1,3 +1,7 @@
-<div class="flex-container">
+<div class="flex-container" style="flex-direction: column;">
+    <div class="p-4">
+        <button>Edit</button>
+        <button>Undo</button>
+    </div>
     <canvas #gameCanvas class="canvas" width="500" height="500" (click)="mouseClick($event)"></canvas>
 </div>

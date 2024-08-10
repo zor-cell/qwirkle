@@ -12,6 +12,11 @@ import {HtmlCanvas} from "../../classes/html-canvas";
 import {PositionService} from "../../services/position.service";
 import {Move, MoveGroup} from '../../classes/move';
 import {Direction} from "../../classes/direction";
+//TODO:
+// edit mode:
+// - adding tiles from stack and not hand
+// - removing tiles (misplaced)
+// undo button:
 
 @Component({
   selector: 'app-game',
@@ -144,11 +149,11 @@ export class GameComponent implements OnInit, AfterViewInit {
     let legal = this.getLegalPositionMulti(this.selectedHand);
     //console.log("legal", legal);
     for(let move of legal) {
-        let options = {color: "#f00", clear: true, text: move.position.i.toString() + "," + move.position.j.toString()};
-        this.renderService.drawCellFromGridPos(this.canvas.ctx, move.position, options);
-        for(let direction of move.directions) {
-          this.renderService.drawCellDirectionFromGridPos(this.canvas.ctx, move.position, direction);
-        }
+      let options = {color: "#f00", clear: true, text: move.position.i.toString() + "," + move.position.j.toString()};
+      this.renderService.drawCellFromGridPos(this.canvas.ctx, move.position, options);
+      for(let direction of move.directions) {
+        this.renderService.drawCellDirectionFromGridPos(this.canvas.ctx, move.position, direction);
+      }
     }
   }
 
@@ -376,3 +381,4 @@ export class GameComponent implements OnInit, AfterViewInit {
     return map;
   }
 }
+
