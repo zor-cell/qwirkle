@@ -1,36 +1,43 @@
-import {CanvasPosition, Position, PositionMapper} from "./position";
-import {Color, ColorMapper} from "./color";
+import {CanvasPosition, GridPosition} from "./position";
+import {Color} from "./color";
 import {Shape} from "./shape";
 import {ImageRenderingOptions} from "./options";
+import {ColorService} from "../services/color.service";
+import {PositionService} from "../services/position.service";
 
 export class Tile {
     public static SIZE = 40;
+    private static cache = new Map<number, string>();
 
-    public position: Position;
+    public position: GridPosition;
     public color: Color;
     public shape: Shape;
 
-    private static cache = new Map<number, string>();
-
-    constructor(position: Position, color: Color, shape: Shape) {
+    constructor(position: GridPosition, color: Color, shape: Shape) {
         this.position = position;
         this.color = color;
         this.shape = shape;
     }
 
     show(ctx: CanvasRenderingContext2D, options: ImageRenderingOptions = {}) {
-        let canvasPos = PositionMapper.gridToCanvasPosition(this.position);
+        let canvasPos = PositionService.gridToCanvasPosition(this.position);
 
         if(Tile.cache.has(this.shape)) {
             let img = new Image();
             img.onload = () => {
                 ctx.clearRect(canvasPos.x, canvasPos.y, Tile.SIZE, Tile.SIZE);
                 ctx.drawImage(img, canvasPos.x, canvasPos.y, Tile.SIZE, Tile.SIZE);
+                if(options.text) {
+                    ctx.font = "12px Arial";
+                    ctx.fillStyle = "black";
+                    ctx.fillText(options.text, canvasPos.x + Tile.SIZE / 2 - 4, canvasPos.y + Tile.SIZE / 2 + 4);
+                }
+
                 URL.revokeObjectURL(img.src);
             }
 
             let text = Tile.cache.get(this.shape)!;
-            let color = ColorMapper.mapColorToHex(this.color);
+            let color = ColorService.mapColorToHex(this.color);
             let updatedText = text.replace('fill="#f00"', `fill="${color}"`)
             if(options.opacity) updatedText = updatedText.replace('opacity="1"', `opacity="${options.opacity}"`);
             let updatedSvg = new Blob([updatedText], {type: 'image/svg+xml'});
@@ -40,7 +47,7 @@ export class Tile {
                 .then(response => response.text())
                 .then(text => {
                     Tile.cache.set(this.shape, text);
-                    this.show(ctx);
+                    this.show(ctx, options);
                 })
         }
     }

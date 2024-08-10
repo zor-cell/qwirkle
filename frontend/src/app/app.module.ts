@@ -6,13 +6,17 @@ import { AppComponent } from './components/app.component';
 import { GameComponent } from './components/game/game.component';
 import { HandComponent } from './components/hand/hand.component';
 import { StackComponent } from './components/stack/stack.component';
+import { EventHandlerComponent } from './components/event-handler/event-handler.component';
+import { CameraComponent } from './components/camera/camera.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     GameComponent,
     HandComponent,
-    StackComponent
+    StackComponent,
+    EventHandlerComponent,
+    CameraComponent
   ],
   imports: [
     BrowserModule,

@@ -1,1 +1,18 @@
-<p>event-handler works!</p>
+<div class="canvasContainer">
+    <div class="canvasContainer2">
+        <app-hand
+                [placeTilesFromGameEvent]="placeTilesEvent.asObservable()"
+                [selectTileFromStackEvent]="selectTileInStackEvent.asObservable()"
+                (selectTilesEvent)="getSelectTilesInHandEvent($event)">
+        </app-hand>
+        <app-game
+                [selectTilesInHandEvent]="selectTilesInHandEvent.asObservable()"
+                (placeTilesEvent)="getPlaceTilesEvent($event)">
+        </app-game>
+    </div>
+   <app-stack
+           (selectedTile)="getSelectTileInStackEvent($event)">
+   </app-stack>
+</div>
+
+<app-camera></app-camera>

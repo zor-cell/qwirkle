@@ -18,6 +18,10 @@ export class CustomMap<K, V> {
         return this.map.get(this.hash(key));
     }
 
+    delete(key: K): boolean {
+        return this.map.delete(this.hash(key));
+    }
+
     values(): V[] {
         return Array.from(this.map.values());
     }

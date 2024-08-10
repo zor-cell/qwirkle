@@ -1,6 +1,6 @@
 import {Tile} from "./tile";
 
-export class Position {
+export class GridPosition {
     i: number;
     j: number;
 
@@ -29,16 +29,10 @@ export class CanvasPosition {
         return this.x + (tmp * tmp);
     }
 
-    containsPoint(pointPosition: CanvasPosition) {
+    containsPointInCell(pointPosition: CanvasPosition) {
         return pointPosition.y >= this.y
             && pointPosition.y <= this.y + Tile.SIZE
             && pointPosition.x >= this.x
             && pointPosition.x <= this.x + Tile.SIZE;
-    }
-}
-
-export abstract class PositionMapper {
-    static gridToCanvasPosition(gridPosition: Position): CanvasPosition {
-        return new CanvasPosition(gridPosition.j * Tile.SIZE, gridPosition.i * Tile.SIZE);
     }
 }

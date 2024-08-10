@@ -7,16 +7,3 @@ export enum Color {
     GREEN = 1 << 4,
     BLUE = 1 << 5
 }
-
-export abstract class ColorMapper {
-    static mapColorToHex(color: Color): string {
-        if(color === Color.ORANGE) return "#ff9900";
-        if(color === Color.PURPLE) return "#8000ff";
-        if(color === Color.YELLOW) return "#ffff00";
-        if(color === Color.RED) return "#ff0000";
-        if(color === Color.GREEN) return "#00ff00";
-        if(color === Color.BLUE) return "#0066ff";
-
-        return "#000";
-    }
-}
