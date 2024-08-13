@@ -3,10 +3,12 @@
         <app-hand
                 [placeTilesFromGameEvent]="placeTilesEvent.asObservable()"
                 [selectTileFromStackEvent]="selectTileInStackEvent.asObservable()"
-                (selectTilesEvent)="getSelectTilesInHandEvent($event)">
+                (selectTilesEvent)="getSelectTilesInHandEvent($event)"
+                (handTilesEvent)="getHandTilesInHandEvent($event)">
         </app-hand>
         <app-game
                 [selectTilesInHandEvent]="selectTilesInHandEvent.asObservable()"
+                [handTilesInHandEvent]="handTilesInHandEvent.asObservable()"
                 (placeTilesEvent)="getPlaceTilesEvent($event)">
         </app-game>
     </div>

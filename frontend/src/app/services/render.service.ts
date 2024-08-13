@@ -3,7 +3,7 @@ import {CanvasPosition, GridPosition} from "../classes/position";
 import {Tile} from "../classes/tile";
 import {CellRenderOptions} from "../classes/options";
 import {PositionService} from "./position.service";
-import {Direction} from "../classes/direction";
+import {Direction, SimpleDirection} from "../classes/direction";
 
 @Injectable({
   providedIn: 'root'
@@ -51,17 +51,17 @@ export class RenderService {
     let w = 0;
     let h = 0;
 
-    if(direction === Direction.UP) {
+    if(direction.d === SimpleDirection.UP) {
       w = Tile.SIZE;
       h = SIZE;
-    } else if(direction === Direction.DOWN) {
+    } else if(direction.d === SimpleDirection.DOWN) {
       y += Tile.SIZE - SIZE;
       w = Tile.SIZE;
       h = SIZE;
-    } else if(direction === Direction.LEFT) {
+    } else if(direction.d === SimpleDirection.LEFT) {
       h = Tile.SIZE;
       w = SIZE;
-    } else if(direction === Direction.RIGHT) {
+    } else if(direction.d === SimpleDirection.RIGHT) {
       x += Tile.SIZE - SIZE;
       h = Tile.SIZE;
       w = SIZE;

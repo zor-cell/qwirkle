@@ -1,7 +1,11 @@
-<div class="flex-container" style="flex-direction: column;">
-    <div class="p-4">
-        <button>Edit</button>
-        <button>Undo</button>
+<div class="d-flex flex-column">
+    <div class="d-flex justify-content-between">
+        <button class="btn btn-secondary">
+            <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button class="btn btn-secondary">
+            <i class="bi bi-pencil"></i>
+        </button>
     </div>
     <canvas #gameCanvas class="canvas" width="500" height="500" (click)="mouseClick($event)"></canvas>
 </div>

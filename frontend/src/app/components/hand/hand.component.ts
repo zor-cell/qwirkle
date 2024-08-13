@@ -19,6 +19,7 @@ import {PositionService} from "../../services/position.service";
 export class HandComponent implements OnInit, AfterViewInit {
   @Input() placeTilesFromGameEvent!: Observable<Tile[]>; //tiles are placed in game component
   @Input() selectTileFromStackEvent!: Observable<Tile>; //tile is selected in stack component
+  @Output() handTilesEvent = new EventEmitter<Tile[]>(); //tiles that are in hand
   @Output() selectTilesEvent = new EventEmitter<Tile[]>(); //tiles are selected in hand component
 
   @ViewChild('handCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
@@ -48,19 +49,25 @@ export class HandComponent implements OnInit, AfterViewInit {
       this.selected = [];
 
       this.draw();
+      this.handTilesEvent.emit(this.hand);
       this.selectTilesEvent.emit(this.selected);
     });
 
 
     this.selectTileFromStackEvent.subscribe((selectedTile) => {
-      this.hand.push(selectedTile);
-      this.draw();
-    });
+      //limit hand tiles
+      if(this.hand.length < 6) {
+        this.hand.push(selectedTile);
+        this.draw();
+      }
 
-    this.initHand();
+      this.handTilesEvent.emit(this.hand);
+    });
   }
 
   ngAfterViewInit() {
+    this.initHand();
+
     this.canvas = new HtmlCanvas(this.canvasRef);
     this.draw();
   }
@@ -149,5 +156,7 @@ export class HandComponent implements OnInit, AfterViewInit {
     this.hand.push(d);
     this.hand.push(e);
     this.hand.push(f);
+
+    this.handTilesEvent.emit(this.hand);
   }
 }

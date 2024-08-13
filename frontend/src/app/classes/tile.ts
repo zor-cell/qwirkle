@@ -51,4 +51,19 @@ export class Tile {
                 })
         }
     }
+
+    /**
+     * Indicates whether a tile is compatible with a given color and a given shape.
+     * Compatible means, that the tiles color or shape is missing from the given ones.
+     * @param color
+     * @param shape
+     */
+    isCompatible(color: Color, shape: Shape): boolean {
+        //if the color is the same, the shape has to be different
+        let sameColorMissingShape = this.color === color && (this.shape & shape) === 0;
+        //if the shape is the same, the color has to be different
+        let sameShapeMissingColor = this.shape === shape && (this.color & color) === 0;
+
+        return sameColorMissingShape || sameShapeMissingColor;
+    }
 }

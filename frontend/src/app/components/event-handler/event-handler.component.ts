@@ -11,6 +11,7 @@ export class EventHandlerComponent {
   placeTilesEvent: Subject<Tile[]> = new Subject<Tile[]>();
   selectTileInStackEvent: Subject<Tile> = new Subject<Tile>();
   selectTilesInHandEvent: Subject<Tile[]> = new Subject<Tile[]>();
+  handTilesInHandEvent: Subject<Tile[]> = new Subject<Tile[]>();
 
   constructor() {}
 
@@ -24,5 +25,9 @@ export class EventHandlerComponent {
 
   getSelectTilesInHandEvent(selectedTiles: Tile[]) {
     this.selectTilesInHandEvent.next(selectedTiles);
+  }
+
+  getHandTilesInHandEvent(handTiles: Tile[]) {
+    this.handTilesInHandEvent.next(handTiles);
   }
 }

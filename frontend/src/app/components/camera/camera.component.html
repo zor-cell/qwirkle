@@ -1,3 +1,10 @@
-<div class="flex-container">
-    <input type="file" accept="image/*" capture="environment">
+<div class="flex-container border border-primary">
+    <div class="d-flex flex-column">
+    <input type="file" accept="image/*" capture="environment" (change)="uploadFile($event)">
+
+    <div *ngIf="uploadFileUrl.length > 0" class="flex-container">
+        <img id="inputImage" [src]="uploadFileUrl" width="100" height="100" alt="Uploaded File" (load)="onImageLoad()">
+        <canvas id="outputImage"></canvas>
+    </div>
+    </div>
 </div>
