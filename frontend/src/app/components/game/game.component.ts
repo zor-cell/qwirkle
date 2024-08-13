@@ -65,58 +65,10 @@ export class GameComponent implements OnInit, AfterViewInit {
     //check for tile placing
     if(this.selectedHand.length === 0) return;
 
-    //TODO: for efficiency dont check all legal moves, only if the pressed move is legal
     this.draw();
-    let legal = this.getLegalMoves(this.selectedHand);
 
-    //move placement after mouse click on already highlighted move group
-    if(this.highlightedMove != null) {
-      //places the tiles in a given direction
-      let clickInMoveGroup = false;
-      for (let direction of this.highlightedMove.directions) {
-        //place all selected tiles in a direction if a tile is clicked
-        for (let i = 0; i < this.selectedHand.length; i++) {
-          //skip the hit-box of the first tile, if there are multiple directions
-          //because it would not be clear what direction to choose on click
-          if(i === 0 && this.highlightedMove.directions.length > 1) continue;
-
-          //check if tiles is pressed
-          let tilePos = this.highlightedMove.position.stepsInDirection(direction, i);
-          if (tilePos.asCanvasPosition().containsPointInCell(mousePos)) {
-            let move = new Move(this.highlightedMove.position, direction);
-            this.placeTiles(move, this.selectedHand);
-            clickInMoveGroup = true;
-            break;
-          }
-        }
-      }
-
-      //reset highlighting
-      this.highlightedMove = null;
-      if(clickInMoveGroup) return;
-    }
-
-    //move highlighting after first mouse click on valid move
-    for(let moveGroup of legal) {
-      if(moveGroup.position.asCanvasPosition().containsPointInCell(mousePos)) {
-        //show first tile only once because it is shown in all directions
-        let firstTile = new Tile(moveGroup.position, this.selectedHand[0].color, this.selectedHand[0].shape);
-        firstTile.show(this.canvas.ctx, {opacity: 0.5});
-
-        //show selected tiles in every direction
-        for(let direction of moveGroup.directions) {
-          //show all selected tiles in order
-          for(let selectedIndex = 1;selectedIndex < this.selectedHand.length;selectedIndex++) {
-            let tilePos = moveGroup.position.stepsInDirection(direction, selectedIndex);
-            let curTile = new Tile(tilePos, this.selectedHand[selectedIndex].color, this.selectedHand[selectedIndex].shape);
-            curTile.show(this.canvas.ctx, {opacity: 0.5});
-          }
-        }
-
-        //set selected group to enable move placing
-        this.highlightedMove = moveGroup;
-      }
-    }
+    if(this.highlightedMove) this.placeMoves(mousePos, this.selectedHand, this.highlightedMove);
+    this.highlightMoves(mousePos);
   }
 
   draw() {
@@ -270,6 +222,81 @@ export class GameComponent implements OnInit, AfterViewInit {
     return score;
   }
 
+  /**
+   * Places tiles after a highlighted move is pressed.
+   * @param mousePos
+   * @param tiles
+   * @param highlightedMove
+   * @private
+   */
+  private placeMoves(mousePos: CanvasPosition, tiles: Tile[], highlightedMove: MoveGroup): boolean {
+    //move placement after mouse click on already highlighted move group
+
+    //places the tiles in a given direction
+    for (let direction of highlightedMove.directions) {
+      //place all selected tiles in a direction if a tile is clicked
+      for (let i = 0; i < tiles.length; i++) {
+        //skip the hit-box of the first tile, if there are multiple directions
+        //because it would not be clear what direction to choose on click
+        if(i === 0 && highlightedMove.directions.length > 1) continue;
+
+        //check if a tile is clicked
+        let tilePos = highlightedMove.position.stepsInDirection(direction, i);
+        if (tilePos.asCanvasPosition().containsPointInCell(mousePos)) {
+          let move = new Move(highlightedMove.position, direction);
+          this.placeTiles(move, tiles);
+
+          //reset highlighting
+          this.highlightedMove = null;
+          return true;
+        }
+      }
+    }
+
+
+    return false;
+  }
+
+  /**
+   * Highlights legal moves after a legal move group is clicked.
+   * Returns true if the mouse position is in a legal move and a highlighted move is set.
+   * @param mousePos
+   * @private
+   */
+  private highlightMoves(mousePos: CanvasPosition): boolean {
+    //move highlighting after first mouse click on valid move
+    let legal = this.getLegalMoves(this.selectedHand);
+    for(let moveGroup of legal) {
+      if(moveGroup.position.asCanvasPosition().containsPointInCell(mousePos)) {
+        //show first tile only once because it is shown in all directions
+        let firstTile = new Tile(moveGroup.position, this.selectedHand[0].color, this.selectedHand[0].shape);
+        firstTile.show(this.canvas.ctx, {opacity: 0.5});
+
+        //show selected tiles in every direction
+        for(let direction of moveGroup.directions) {
+          //show all selected tiles in order
+          for(let selectedIndex = 1;selectedIndex < this.selectedHand.length;selectedIndex++) {
+            let tilePos = moveGroup.position.stepsInDirection(direction, selectedIndex);
+            let curTile = new Tile(tilePos, this.selectedHand[selectedIndex].color, this.selectedHand[selectedIndex].shape);
+            curTile.show(this.canvas.ctx, {opacity: 0.5});
+          }
+        }
+
+        //set selected group to enable move placing
+        this.highlightedMove = moveGroup;
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Makes a move by placing the given tiles at the position and in the direction of the given move.
+   * @param move
+   * @param tiles
+   * @private
+   */
   private placeTiles(move: Move, tiles: Tile[]) {
     for(let tileIndex = 0;tileIndex < tiles.length;tileIndex++) {
       let tilePos = move.position.stepsInDirection(move.direction, tileIndex);
@@ -293,7 +320,7 @@ export class GameComponent implements OnInit, AfterViewInit {
     if(tiles.length === 0) return result;
     else if(tiles.length === 1) {
       //if there is only one tile to be placed, legal positions are trivial
-      return this.getLegalPositions(tiles[0]).values().map(pos => new MoveGroup(pos, [new Direction(SimpleDirection.NONE)]));
+      return this.getLegalPositions(tiles[0]).values().map(pos => new MoveGroup(pos, [Direction.noDirection()]));
     }
 
     //try every valid position of the first tile
