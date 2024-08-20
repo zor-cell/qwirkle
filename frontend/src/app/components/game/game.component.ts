@@ -9,9 +9,10 @@ import {RenderService} from "../../services/render.service";
 import {BitfilterService} from "../../services/bitfilter.service";
 import {Observable} from "rxjs";
 import {HtmlCanvas} from "../../classes/html-canvas";
-import {PositionService} from "../../services/position.service";
-import {Move, MoveGroup} from '../../classes/move';
-import {SimpleDirection, Direction} from "../../classes/direction";
+import {FinalMove, Move, MoveGroup} from '../../classes/move';
+import {Direction, SimpleDirection} from "../../classes/direction";
+import {ImageRenderingOptions} from "../../classes/options";
+
 //TODO:
 // edit mode:
 // - adding tiles from stack and not hand
@@ -36,6 +37,7 @@ export class GameComponent implements OnInit, AfterViewInit {
   private selectedHand: Tile[] = [];
 
   private highlightedMove: MoveGroup | null = null;
+  private bestMoves: FinalMove[] = [];
 
   constructor(private renderService: RenderService, private bitfilterService: BitfilterService) {}
 
@@ -47,8 +49,9 @@ export class GameComponent implements OnInit, AfterViewInit {
 
     this.handTilesInHandEvent.subscribe((handTiles) => {
       this.handTiles = handTiles;
-     // this.findBestMove(this.handTiles);
-    })
+      this.bestMoves = this.findBestMove(this.handTiles);
+      if(this.canvas) this.draw();
+    });
 
     this.grid = this.map1();
   }
@@ -67,12 +70,29 @@ export class GameComponent implements OnInit, AfterViewInit {
 
     this.draw();
 
-    if(this.highlightedMove) this.placeMoves(mousePos, this.selectedHand, this.highlightedMove);
+    if(this.highlightedMove) {
+      this.placeMoves(mousePos, this.selectedHand, this.highlightedMove);
+    }
     this.highlightMoves(mousePos);
   }
 
   draw() {
     this.canvas.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    //draw best moves
+    console.log(this.bestMoves.length, this.bestMoves[0])
+    if(this.bestMoves.length > 0) {
+      const maxBestMoves = 1;
+      for (let i = 0;i < maxBestMoves;i++) {
+        let bestMove = this.bestMoves[i];
+        for (let tileIndex = 0; tileIndex < bestMove.tiles.length; tileIndex++) {
+          let tilePos = bestMove.position.stepsInDirection(bestMove.direction, tileIndex);
+          let tile = new Tile(tilePos, bestMove.tiles[tileIndex].color, bestMove.tiles[tileIndex].shape);
+          let options: ImageRenderingOptions = {opacity: 0.1};
+          tile.show(this.canvas.ctx, options);
+        }
+      }
+    }
 
     //draw tiles
     this.canvas.ctx.beginPath();
@@ -82,10 +102,16 @@ export class GameComponent implements OnInit, AfterViewInit {
     this.canvas.ctx.stroke();
 
     //draw free spots
-    let free = this.getFreePositions();
+    let free = this.getAllFreePositions();
     for(let pos of free.values()) {
       this.renderService.drawCellFromGridPos(this.canvas.ctx, pos, {color: "#0aa", text: pos.i.toString() + "," + pos.j.toString()});
     }
+
+    //draw dead spots
+    /*let dead = this.getDeadPositions();
+    for(let pos of dead.values()) {
+      this.renderService.drawCellFromGridPos(this.canvas.ctx, pos, {color: "#000", fill: true});
+    }*/
 
     //draw legal spots for current selected tiles
     let legal = this.getLegalMoves(this.selectedHand);
@@ -98,7 +124,7 @@ export class GameComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private findBestMove(tiles: Tile[]) {
+  private findBestMove(tiles: Tile[]): FinalMove[] {
     //create all valid subsets of tiles
     let subsets = BitfilterService.allSubsets(tiles);
     let validSubsets: Tile[][] = [];
@@ -125,9 +151,7 @@ export class GameComponent implements OnInit, AfterViewInit {
       if(valid) validSubsets.push(subset);
     }
 
-    let maxScore = -1;
-    let maxMove = null;
-    let maxTiles = null;
+    let moves: FinalMove[] = [];
     //go through all permutations of valid subsets
     for(let subset of validSubsets) {
       let permutations = BitfilterService.allPermutations(subset);
@@ -136,90 +160,137 @@ export class GameComponent implements OnInit, AfterViewInit {
         //get score for every move of legal moves
         for(let moveGroup of legal) {
           for(let direction of moveGroup.directions) {
-            let move = new Move(moveGroup.position, direction);
-            let score = this.getMoveScore(move, subset);
-            if(score > maxScore) {
-              maxScore = score;
-              maxMove = move;
-              maxTiles = subset;
-            }
+            let move = new Move(new GridPosition(moveGroup.position.i, moveGroup.position.j), new Direction(direction.d));
+            let score = this.getMoveScore(move, subset.map(x => new Tile(new GridPosition(x.position.i, x.position.j), x.color, x.shape)));
+
+            let finalMove = new FinalMove(new GridPosition(move.position.i, move.position.j), move.direction, subset, score);
+            moves.push(finalMove);
           }
         }
       }
     }
 
-    console.log(maxScore, maxMove, maxTiles);
+    moves.sort((a, b) => b.score - a.score);
+
+    return moves;
   }
 
-  private getMoveScore(move: Move, tiles: Tile[]) {
-    let positions: GridPosition[] = [];
-    for(let i = 0;i < tiles.length;i++) {
-      let tilePos = new GridPosition(move.position.i + move.direction.di * i, move.position.j + move.direction.dj * i);
-      positions.push(tilePos);
+  /**
+   * Computes the score for a given position in a given direction and its inverse direction.
+   * If x is the position and the direction is pointing UP, the score is 4, as it is
+   * summing the score of UP, the score of DOWN and 1 for the tile itself.
+   *    1
+   *    x
+   *    2
+   *    3
+   * @param position
+   * @param direction
+   */
+  getScoreForDirectionPair(position: GridPosition, direction: Direction): number {
+    let directions = [direction, direction.inverse];
+
+    let score = 0;
+    let color = Color.NONE;
+    let shape = Shape.NONE;
+    for(let direction of directions) {
+      let steps = 1;
+      while(this.grid.has(position.stepsInDirection(direction, steps))) {
+        let neighbor = this.grid.get(position.stepsInDirection(direction, steps))!;
+
+        color |= neighbor.color;
+        shape |= neighbor.shape;
+
+        score++;
+        steps++;
+      }
+    }
+    if(score > 0) score++; //count tile itself
+    if(score === 6) score = 12; //when qwirkle is achieved
+
+    return score;
+  }
+
+  isDeadInDirectionPair(position: GridPosition, direction: Direction) {
+    let directions = [direction, direction.inverse];
+
+    let color = Color.NONE;
+    let shape = Shape.NONE;
+    for(let direction of directions) {
+      let steps = 1;
+      while(this.grid.has(position.stepsInDirection(direction, steps))) {
+        let neighbor = this.grid.get(position.stepsInDirection(direction, steps))!;
+
+        color |= neighbor.color;
+        shape |= neighbor.shape;
+
+        steps++;
+      }
     }
 
+    return {color: color, shape: shape};
+  }
+
+  isDeadPosition(position: GridPosition) {
+    let ver = this.isDeadInDirectionPair(position, new Direction(SimpleDirection.UP));
+    let hor = this.isDeadInDirectionPair(position, new Direction(SimpleDirection.LEFT));
+
+    for(let cs of [ver, hor]) {
+      let colorBits = this.bitfilterService.setBitCount(cs.color);
+      let shapeBits = this.bitfilterService.setBitCount(cs.shape);
+      let noMatch =  colorBits >= 2 && shapeBits >= 2; //there are incompatible colors or shapes in the direction
+      let qwirkle = colorBits === 6 || shapeBits === 6; //the direction is already finished with a qwirkle
+
+      if(noMatch || qwirkle) return true;
+    }
+
+    let invalidColor = false;
+    let invalidShape = false;
+    if(ver.color != Color.NONE && hor.color != Color.NONE) invalidColor = (~ver.color & hor.color) === 0;
+    if(ver.shape != Shape.NONE && hor.shape != Shape.NONE) invalidShape = (~ver.shape & hor.shape) === 0;
+
+    return invalidColor || invalidShape;
+  }
+
+  /**
+   * Computes the move score for a given move and given tiles.
+   * This method does not check if the grid is valid.
+   * @param move
+   * @param tiles
+   * @private
+   */
+  private getMoveScore(move: Move, tiles: Tile[]) {
+    //only a single tile is placed
+    if(tiles.length === 1) {
+      let verScore = this.getScoreForDirectionPair(move.position, new Direction(SimpleDirection.UP));
+      let horScore = this.getScoreForDirectionPair(move.position, new Direction(SimpleDirection.LEFT));
+
+      return verScore + horScore;
+    }
+
+    let totalScore = 0;
     //place tiles
     for(let i = 0;i < tiles.length;i++) {
-      tiles[i].position = positions[i];
-      this.grid.add(positions[i], tiles[i]);
+      tiles[i].position = move.position.stepsInDirection(move.direction, i);
+      this.grid.add(tiles[i].position, tiles[i]);
     }
 
-    //go through all 4 directions from the tile
-    let score = 0;
-    let seenMoveDirection = false;
-    let seenMoveInvDirection = false;
-    let di = [-1, 1, 0, 0];
-    let dj = [0, 0, -1, 1];
+    //check scores in direction that is not a placement direction (or inverse placement direction)
+    let noPlaceDirection = move.direction.rotate90Deg();
     for(let tile of tiles) {
-      let tileScore = 0;
-      for (let d = 0; d < 4; d++) {
-        //only check move direction once
-        if(di[d] === move.direction.di && dj[d] === move.direction.dj) {
-          if(seenMoveDirection) continue;
-          else seenMoveDirection = true;
-        }
-        //only check inverse move direction once
-        if(di[d] === -move.direction.di && dj[d] === -move.direction.dj) {
-          if(seenMoveInvDirection) continue;
-          else seenMoveInvDirection = true;
-        }
-
-        let pos: GridPosition = new GridPosition(tile.position.i + di[d], tile.position.j + dj[d]);
-        let color = Color.NONE;
-        let shape = Shape.NONE;
-
-        //continue if neighbor is empty
-        if (!this.grid.has(pos)) continue;
-
-        //accumulate neighbors colors and shapes in current direction
-        while (this.grid.has(pos)) {
-          let neighbor = this.grid.get(pos)!;
-
-          color |= neighbor.color;
-          shape |= neighbor.shape;
-
-          pos = new GridPosition(pos.i + di[d], pos.j + dj[d]);
-        }
-
-        tileScore += this.bitfilterService.setBitCount(color);
-        tileScore += this.bitfilterService.setBitCount(shape);
-        if (tileScore === 6) score *= 2;
-
-        if (!this.bitfilterService.isCompatible(color, shape, tile.color, tile.shape)) {
-          tileScore = 0;
-          break;
-        }
-      }
-      score += tileScore;
+      let noPlaceDirectionScore = this.getScoreForDirectionPair(tile.position, noPlaceDirection);
+      totalScore += noPlaceDirectionScore;
     }
+
+    //check score in placement direction only once
+    let placeDirectionScore = this.getScoreForDirectionPair(move.position, move.direction);
+    totalScore += placeDirectionScore;
 
     //remove tiles
     for(let i = 0;i < tiles.length;i++) {
-      tiles[i].position = positions[i];
-      this.grid.delete(positions[i]);
+      this.grid.delete(tiles[i].position);
     }
 
-    return score;
+    return totalScore;
   }
 
   /**
@@ -368,7 +439,7 @@ export class GameComponent implements OnInit, AfterViewInit {
   private getLegalPositions(tile: Tile): CustomSet<GridPosition> {
     let legal = new CustomSet<GridPosition>(pos => pos.hash());
 
-    let freePositions = this.getFreePositions();
+    let freePositions = this.getAllFreePositions();
     for(let freePos of freePositions.values()) {
       if(this.isLegalPositionForTile(freePos, tile)) {
         legal.add(freePos);
@@ -390,6 +461,31 @@ export class GameComponent implements OnInit, AfterViewInit {
     if(this.grid.has(position)) {
       return false;
     }
+
+   /* let directionPairs = [
+        [new Direction(SimpleDirection.UP), new Direction(SimpleDirection.DOWN)],
+        [new Direction(SimpleDirection.LEFT), new Direction(SimpleDirection.RIGHT)]
+    ];
+
+    for(let directionPair of directionPairs) {
+      let color = Color.NONE;
+      let shape = Shape.NONE;
+      for(let direction of directionPair) {
+        let steps = 1;
+        while(this.grid.has(position.stepsInDirection(direction, steps))) {
+          let neighbor = this.grid.get(position.stepsInDirection(direction, steps))!;
+
+          color |= neighbor.color;
+          shape |= neighbor.shape;
+
+          steps++;
+        }
+      }
+
+      if(!tile.isCompatible(color, shape)) return false;
+    }
+
+    return true;*/
 
     //go through all 4 directions from the tile
     for(let direction of Direction.allDirections()) {
@@ -422,22 +518,59 @@ export class GameComponent implements OnInit, AfterViewInit {
 
   /**
    * Retrieves all open grid spots, ie all neighbor fields that are not occupied.
+   * This does not exclude dead positions, ie positions that can never be filled
    * @private
    */
-  private getFreePositions(): CustomSet<GridPosition> {
-    let free = new CustomSet<GridPosition>(pos => pos.hash());
+  private getAllOpenPositions(): CustomSet<GridPosition> {
+    let open = new CustomSet<GridPosition>(pos => pos.hash());
 
     for(let tile of this.grid.values()) {
       for(let direction of Direction.allDirections()) {
-        let pos: GridPosition = tile.position.stepsInDirection(direction);
+        let pos: GridPosition = tile.position.stepsInDirection(direction, 1);
         if(!this.grid.has(pos)) {
-          free.add(pos);
+          open.add(pos);
         }
+      }
+    }
+
+    return open;
+  }
+
+  /**
+   * Retrieves all free grid spots, ie all neighbor fields that a tile can be placed on.
+   * This excludes dead positions, ie neighbor fields that can never be occupied by a tile.
+   * @private
+   */
+  private getAllFreePositions(): CustomSet<GridPosition> {
+    let free = new CustomSet<GridPosition>(pos => pos.hash());
+
+    for(let position of this.getAllOpenPositions().values()) {
+      if(!this.isDeadPosition(position)) {
+        free.add(position);
       }
     }
 
     return free;
   }
+
+  /**
+   * Retrieves all dead grid spots, ie all neighbor fields that can never be occupied by a valid tile.
+   * @private
+   */
+  private getDeadPositions(): CustomSet<GridPosition> {
+    let dead = new CustomSet<GridPosition>(pos => pos.hash());
+
+    for(let position of this.getAllOpenPositions().values()) {
+      let deadUp = this.isDeadInDirectionPair(position, new Direction(SimpleDirection.UP));
+      let deadLeft = this.isDeadInDirectionPair(position, new Direction(SimpleDirection.LEFT));
+      if(deadUp || deadLeft) {
+        dead.add(position);
+      }
+    }
+
+    return dead;
+  }
+
 
   private initMap() {
     let pos = new GridPosition(5, 3);

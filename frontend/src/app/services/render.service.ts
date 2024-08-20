@@ -27,6 +27,7 @@ export class RenderService {
     if(options.lineWidth) {
       ctx.lineWidth = options.lineWidth;
     }
+    if(options.opacity) ctx.globalAlpha = options.opacity;
 
     ctx.beginPath();
     ctx.rect(pos.x, pos.y, Tile.SIZE, Tile.SIZE);
@@ -37,6 +38,8 @@ export class RenderService {
     if(options.text) {
       ctx.fillText(options.text, pos.x + 2, pos.y + 8);
     }
+
+    ctx.globalAlpha = 1;
   }
 
   drawCellDirectionFromGridPos(ctx: CanvasRenderingContext2D, pos: GridPosition, direction: Direction, options: CellRenderOptions = {fill: true}) {

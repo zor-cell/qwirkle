@@ -12,7 +12,7 @@ export class Direction {
     constructor(d: SimpleDirection);
     constructor(di: number, dj: number);
     constructor(param1: SimpleDirection | number, param2?: number) {
-        if(param1 satisfies SimpleDirection) {
+        if(param1 satisfies SimpleDirection && param2 === undefined) {
             //1 direction
             this._direction = param1;
         } else {
@@ -46,6 +46,19 @@ export class Direction {
         else if(this._direction === SimpleDirection.RIGHT) return 1;
 
         return 0;
+    }
+
+    get inverse(): Direction {
+        return new Direction(-this.di, -this.dj);
+    }
+
+    rotate90Deg(): Direction {
+        if(this.d === SimpleDirection.UP) return new Direction(SimpleDirection.RIGHT);
+        else if(this.d === SimpleDirection.RIGHT) return new Direction(SimpleDirection.DOWN);
+        else if(this.d === SimpleDirection.DOWN) return new Direction(SimpleDirection.LEFT);
+        else if(this.d === SimpleDirection.LEFT) return new Direction(SimpleDirection.UP);
+
+        return new Direction(SimpleDirection.NONE);
     }
 
     static noDirection(): Direction {

@@ -4,6 +4,7 @@ export interface CellRenderOptions {
     clear?: boolean; //determines if cell is cleared before being rendered
     lineWidth?: number; //width of the line
     text?: string; //text to be displayed
+    opacity?: number; //opacity of the render color in range [0, 1]
 }
 
 export interface ImageRenderingOptions {

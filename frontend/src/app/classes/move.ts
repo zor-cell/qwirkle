@@ -1,5 +1,6 @@
 import {Direction, SimpleDirection} from "./direction";
 import {GridPosition} from "./position";
+import {Tile} from "./tile";
 
 export class Move {
     public position: GridPosition;
@@ -8,6 +9,20 @@ export class Move {
     constructor(position: GridPosition, direction: Direction) {
         this.position = position;
         this.direction = direction;
+    }
+}
+
+export class FinalMove {
+    public position: GridPosition;
+    public direction: Direction;
+    public tiles: Tile[];
+    public score: number;
+
+    constructor(position: GridPosition, direction: Direction, tiles: Tile[], score: number) {
+        this.position = position;
+        this.direction = direction;
+        this.tiles = tiles;
+        this.score = score;
     }
 }
 
