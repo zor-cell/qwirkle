@@ -12,6 +12,34 @@ export class RenderService {
 
   constructor() { }
 
+  drawBelowCellFromGridPos(ctx: CanvasRenderingContext2D, pos: GridPosition, options: CellRenderOptions = {}) {
+    this.drawBelowCell(ctx, pos.asCanvasPosition(), options);
+  }
+
+  drawBelowCell(ctx: CanvasRenderingContext2D, pos: CanvasPosition, options: CellRenderOptions = {}) {
+    if(options.clear) ctx.clearRect(pos.x, pos.y, Tile.SIZE, Tile.SIZE);
+    if(options.color) {
+      ctx.fillStyle = options.color;
+      ctx.strokeStyle = options.color;
+    }
+    if(options.lineWidth) {
+      ctx.lineWidth = options.lineWidth;
+    }
+    if(options.opacity) ctx.globalAlpha = options.opacity;
+
+    ctx.beginPath();
+    ctx.rect(pos.x, pos.y + Tile.SIZE, Tile.SIZE, 10);
+
+    if(options.fill) ctx.fill();
+    else ctx.stroke();
+
+    if(options.text) {
+      ctx.fillText(options.text, pos.x + 2, pos.y + 8);
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
   //draws a cell from a grid position
   drawCellFromGridPos(ctx: CanvasRenderingContext2D, pos: GridPosition, options: CellRenderOptions = {}) {
     this.drawCell(ctx, PositionService.gridToCanvasPosition(pos), options);

@@ -1,11 +1,23 @@
 <div class="d-flex flex-column">
-    <div class="d-flex justify-content-between">
+    <canvas #gameCanvas class="canvas" width="500" height="500"
+            (click)="mouseClick($event)"
+            (wheel)="mouseWheel($event)">
+    </canvas>
+    <div class="d-flex justify-content-start gap-1">
         <button class="btn btn-secondary">
-            <i class="bi bi-arrow-counterclockwise"></i>
+            <i class="bi bi-rewind"></i> <!--Undo move-->
         </button>
         <button class="btn btn-secondary">
-            <i class="bi bi-pencil"></i>
+            <i class="bi bi-fast-forward"></i><!--Redo move-->
+        </button>
+        <button class="btn btn-secondary">
+            <i class="bi bi-pencil"></i> <!--Edit mode-->
+        </button>
+        <button class="btn btn-secondary">
+            <i class="bi bi-floppy"></i> <!--Save board to localstorage-->
+        </button>
+        <button class="btn btn-secondary">
+            <i class="bi bi-trophy"></i> <!--Show best move-->
         </button>
     </div>
-    <canvas #gameCanvas class="canvas" width="500" height="500" (click)="mouseClick($event)"></canvas>
 </div>

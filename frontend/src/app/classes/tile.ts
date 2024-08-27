@@ -14,7 +14,7 @@ export class Tile {
     public shape: Shape;
 
     constructor(position: GridPosition, color: Color, shape: Shape) {
-        this.position = position;
+        this.position = position.copy();
         this.color = color;
         this.shape = shape;
     }

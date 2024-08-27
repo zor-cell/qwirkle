@@ -10,6 +10,7 @@ import {RenderService} from "../../services/render.service";
 import {BitfilterService} from "../../services/bitfilter.service";
 import {HtmlCanvas} from "../../classes/html-canvas";
 import {PositionService} from "../../services/position.service";
+import {Move} from "../../classes/move";
 
 @Component({
   selector: 'app-hand',
@@ -18,6 +19,7 @@ import {PositionService} from "../../services/position.service";
 })
 export class HandComponent implements OnInit, AfterViewInit {
   @Input() placeTilesFromGameEvent!: Observable<Tile[]>; //tiles are placed in game component
+  @Input() bestMoveFromGameEvent!: Observable<Move>; //best move is computed in game component
   @Input() selectTileFromStackEvent!: Observable<Tile>; //tile is selected in stack component
   @Output() handTilesEvent = new EventEmitter<Tile[]>(); //tiles that are in hand
   @Output() selectTilesEvent = new EventEmitter<Tile[]>(); //tiles are selected in hand component
@@ -27,6 +29,7 @@ export class HandComponent implements OnInit, AfterViewInit {
 
   private hand: Tile[] = [];
   private selected: Tile[] = [];
+  private bestMove: Move | null = null;
 
   constructor(private renderService: RenderService, private bitfilterService: BitfilterService) {}
 
@@ -41,7 +44,7 @@ export class HandComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit() {
-    this.placeTilesFromGameEvent.subscribe((placedTiles) => {
+    this.placeTilesFromGameEvent.subscribe(placedTiles => {
       for(let tile of placedTiles) {
         let handIndex = this.findIndex(this.hand, tile);
         if(handIndex >= 0) this.hand.splice(handIndex, 1);
@@ -54,7 +57,7 @@ export class HandComponent implements OnInit, AfterViewInit {
     });
 
 
-    this.selectTileFromStackEvent.subscribe((selectedTile) => {
+    this.selectTileFromStackEvent.subscribe(selectedTile => {
       //limit hand tiles
       if(this.hand.length < 6) {
         this.hand.push(selectedTile);
@@ -63,6 +66,22 @@ export class HandComponent implements OnInit, AfterViewInit {
 
       this.handTilesEvent.emit(this.hand);
     });
+
+    this.bestMoveFromGameEvent.subscribe(bestMove => {
+      this.bestMove = bestMove;
+
+      //we need reference of hand tiles not any tiles.
+      let correctTiles: Tile[] = [];
+      for(let tile of bestMove.tiles) {
+        let index = this.findIndex(this.hand, tile);
+        correctTiles.push(this.hand[index]);
+      }
+      this.bestMove.tiles = correctTiles;
+
+      this.draw();
+
+      console.log(this.bestMove);
+    })
   }
 
   ngAfterViewInit() {
@@ -73,6 +92,8 @@ export class HandComponent implements OnInit, AfterViewInit {
   }
 
   draw() {
+    if(this.canvas === undefined) return;
+
     this.canvas.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     //draw hand
@@ -99,6 +120,14 @@ export class HandComponent implements OnInit, AfterViewInit {
             tile.show(this.canvas.ctx, {opacity: 0.3});
           }
         }
+      }
+    }
+
+    //TODO draw best move tiles
+    if(this.bestMove) {
+      for (let i = 0;i < this.bestMove.tiles.length; i++) {
+        let tile = this.bestMove.tiles[i];
+        this.renderService.drawBelowCellFromGridPos(this.canvas.ctx, tile.position, {color: Move.bestMoveColors[i], fill: true});
       }
     }
   }

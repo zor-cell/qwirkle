@@ -27,6 +27,10 @@ export class GridPosition {
         return this.i + (tmp * tmp);
     }
 
+    copy(): GridPosition {
+        return new GridPosition(this.i, this.j);
+    }
+
     stepsInDirection(direction: Direction, steps: number = 1): GridPosition {
         return new GridPosition(this.i + direction.di * steps, this.j + direction.dj * steps);
     }
@@ -56,6 +60,10 @@ export class CanvasPosition {
     hash(): number {
         let tmp = (this.y +  ((this.x + 1) / 2));
         return this.x + (tmp * tmp);
+    }
+
+    copy(): CanvasPosition {
+        return new CanvasPosition(this.x, this.y);
     }
 
     containsPointInCell(pointPosition: CanvasPosition) {

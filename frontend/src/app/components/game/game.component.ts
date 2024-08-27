@@ -9,7 +9,7 @@ import {RenderService} from "../../services/render.service";
 import {BitfilterService} from "../../services/bitfilter.service";
 import {Observable} from "rxjs";
 import {HtmlCanvas} from "../../classes/html-canvas";
-import {FinalMove, Move, MoveGroup} from '../../classes/move';
+import {Move, MoveGroup} from '../../classes/move';
 import {Direction, SimpleDirection} from "../../classes/direction";
 import {ImageRenderingOptions} from "../../classes/options";
 
@@ -28,6 +28,7 @@ export class GameComponent implements OnInit, AfterViewInit {
   @Input() selectTilesInHandEvent!: Observable<Tile[]>; //tiles are selected in hand component
   @Input() handTilesInHandEvent!: Observable<Tile[]>; //tiles that are in the hand component
   @Output() placeTilesEvent = new EventEmitter<Tile[]>(); //tile is placed in game component
+  @Output() bestMoveEvent = new EventEmitter<Move>() //best move is calculated
 
   @ViewChild('gameCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
   private canvas!: HtmlCanvas;
@@ -37,7 +38,7 @@ export class GameComponent implements OnInit, AfterViewInit {
   private selectedHand: Tile[] = [];
 
   private highlightedMove: MoveGroup | null = null;
-  private bestMoves: FinalMove[] = [];
+  private bestMove: Move | null = null;
 
   constructor(private renderService: RenderService, private bitfilterService: BitfilterService) {}
 
@@ -49,8 +50,10 @@ export class GameComponent implements OnInit, AfterViewInit {
 
     this.handTilesInHandEvent.subscribe((handTiles) => {
       this.handTiles = handTiles;
-      this.bestMoves = this.findBestMove(this.handTiles);
+      this.bestMove = this.findBestMove(this.handTiles);
       if(this.canvas) this.draw();
+
+      this.bestMoveEvent.next(this.bestMove);
     });
 
     this.grid = this.map1();
@@ -58,6 +61,21 @@ export class GameComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit() {
     this.canvas = new HtmlCanvas(this.canvasRef);
+    this.draw();
+  }
+
+  mouseWheel(event: WheelEvent) {
+    let mousePos = this.canvas.mouseToCanvasPosition(event.clientX, event.clientY);
+    if(!this.canvas.isValidMousePosition(mousePos)) return;
+
+    if(event.deltaY < 0) {
+      //scroll UP
+      //if(Tile.SIZE < 60) Tile.SIZE += 1;
+    } else if(event.deltaY > 0) {
+      //scroll DOWN
+      //if(Tile.SIZE > 20) Tile.SIZE -= 1;
+    } else return;
+
     this.draw();
   }
 
@@ -78,21 +96,6 @@ export class GameComponent implements OnInit, AfterViewInit {
 
   draw() {
     this.canvas.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    //draw best moves
-    console.log(this.bestMoves.length, this.bestMoves[0])
-    if(this.bestMoves.length > 0) {
-      const maxBestMoves = 1;
-      for (let i = 0;i < maxBestMoves;i++) {
-        let bestMove = this.bestMoves[i];
-        for (let tileIndex = 0; tileIndex < bestMove.tiles.length; tileIndex++) {
-          let tilePos = bestMove.position.stepsInDirection(bestMove.direction, tileIndex);
-          let tile = new Tile(tilePos, bestMove.tiles[tileIndex].color, bestMove.tiles[tileIndex].shape);
-          let options: ImageRenderingOptions = {opacity: 0.1};
-          tile.show(this.canvas.ctx, options);
-        }
-      }
-    }
 
     //draw tiles
     this.canvas.ctx.beginPath();
@@ -122,9 +125,17 @@ export class GameComponent implements OnInit, AfterViewInit {
         this.renderService.drawCellDirectionFromGridPos(this.canvas.ctx, move.position, direction);
       }
     }
+
+    //draw best moves
+    if(this.bestMove) {
+      for (let i = 0; i < this.bestMove.tiles.length; i++) {
+        let pos = this.bestMove.position.stepsInDirection(this.bestMove.direction, i);
+        this.renderService.drawCellFromGridPos(this.canvas.ctx, pos, {color: Move.bestMoveColors[i], fill: true});
+      }
+    }
   }
 
-  private findBestMove(tiles: Tile[]): FinalMove[] {
+  private findBestMove(tiles: Tile[]): Move {
     //create all valid subsets of tiles
     let subsets = BitfilterService.allSubsets(tiles);
     let validSubsets: Tile[][] = [];
@@ -151,7 +162,7 @@ export class GameComponent implements OnInit, AfterViewInit {
       if(valid) validSubsets.push(subset);
     }
 
-    let moves: FinalMove[] = [];
+    let moves: Move[] = [];
     //go through all permutations of valid subsets
     for(let subset of validSubsets) {
       let permutations = BitfilterService.allPermutations(subset);
@@ -160,11 +171,10 @@ export class GameComponent implements OnInit, AfterViewInit {
         //get score for every move of legal moves
         for(let moveGroup of legal) {
           for(let direction of moveGroup.directions) {
-            let move = new Move(new GridPosition(moveGroup.position.i, moveGroup.position.j), new Direction(direction.d));
-            let score = this.getMoveScore(move, subset.map(x => new Tile(new GridPosition(x.position.i, x.position.j), x.color, x.shape)));
-
-            let finalMove = new FinalMove(new GridPosition(move.position.i, move.position.j), move.direction, subset, score);
-            moves.push(finalMove);
+            let subsetCopy = subset.map(x => new Tile(x.position, x.color, x.shape));
+            let move = new Move(moveGroup.position, new Direction(direction.d), subsetCopy, -1);
+            move.score = this.getMoveScore(move);
+            moves.push(move);
           }
         }
       }
@@ -172,7 +182,7 @@ export class GameComponent implements OnInit, AfterViewInit {
 
     moves.sort((a, b) => b.score - a.score);
 
-    return moves;
+    return moves[0];
   }
 
   /**
@@ -258,9 +268,9 @@ export class GameComponent implements OnInit, AfterViewInit {
    * @param tiles
    * @private
    */
-  private getMoveScore(move: Move, tiles: Tile[]) {
+  private getMoveScore(move: Move) {
     //only a single tile is placed
-    if(tiles.length === 1) {
+    if(move.tiles.length === 1) {
       let verScore = this.getScoreForDirectionPair(move.position, new Direction(SimpleDirection.UP));
       let horScore = this.getScoreForDirectionPair(move.position, new Direction(SimpleDirection.LEFT));
 
@@ -269,14 +279,14 @@ export class GameComponent implements OnInit, AfterViewInit {
 
     let totalScore = 0;
     //place tiles
-    for(let i = 0;i < tiles.length;i++) {
-      tiles[i].position = move.position.stepsInDirection(move.direction, i);
-      this.grid.add(tiles[i].position, tiles[i]);
+    for(let i = 0;i < move.tiles.length;i++) {
+      move.tiles[i].position = move.position.stepsInDirection(move.direction, i);
+      this.grid.add(move.tiles[i].position, move.tiles[i]);
     }
 
     //check scores in direction that is not a placement direction (or inverse placement direction)
     let noPlaceDirection = move.direction.rotate90Deg();
-    for(let tile of tiles) {
+    for(let tile of move.tiles) {
       let noPlaceDirectionScore = this.getScoreForDirectionPair(tile.position, noPlaceDirection);
       totalScore += noPlaceDirectionScore;
     }
@@ -286,8 +296,8 @@ export class GameComponent implements OnInit, AfterViewInit {
     totalScore += placeDirectionScore;
 
     //remove tiles
-    for(let i = 0;i < tiles.length;i++) {
-      this.grid.delete(tiles[i].position);
+    for(let i = 0;i < move.tiles.length;i++) {
+      this.grid.delete(move.tiles[i].position);
     }
 
     return totalScore;
@@ -314,8 +324,8 @@ export class GameComponent implements OnInit, AfterViewInit {
         //check if a tile is clicked
         let tilePos = highlightedMove.position.stepsInDirection(direction, i);
         if (tilePos.asCanvasPosition().containsPointInCell(mousePos)) {
-          let move = new Move(highlightedMove.position, direction);
-          this.placeTiles(move, tiles);
+          let move = new Move(highlightedMove.position, direction, tiles, -1);
+          this.placeTiles(move);
 
           //reset highlighting
           this.highlightedMove = null;
@@ -365,18 +375,17 @@ export class GameComponent implements OnInit, AfterViewInit {
   /**
    * Makes a move by placing the given tiles at the position and in the direction of the given move.
    * @param move
-   * @param tiles
    * @private
    */
-  private placeTiles(move: Move, tiles: Tile[]) {
-    for(let tileIndex = 0;tileIndex < tiles.length;tileIndex++) {
+  private placeTiles(move: Move) {
+    for(let tileIndex = 0;tileIndex < move.tiles.length;tileIndex++) {
       let tilePos = move.position.stepsInDirection(move.direction, tileIndex);
-      let tile = new Tile(tilePos, tiles[tileIndex].color, tiles[tileIndex].shape);
+      let tile = new Tile(tilePos, move.tiles[tileIndex].color, move.tiles[tileIndex].shape);
       this.grid.add(tile.position, tile);
     }
 
     this.draw();
-    this.placeTilesEvent.next(tiles);
+    this.placeTilesEvent.next(move.tiles);
   }
 
   /**
@@ -397,7 +406,7 @@ export class GameComponent implements OnInit, AfterViewInit {
     //try every valid position of the first tile
     let legal = this.getLegalPositions(tiles[0]);
     for (let pos of legal.values()) {
-      let curMoveGroup = new MoveGroup(new GridPosition(pos.i, pos.j), []);
+      let curMoveGroup = new MoveGroup(pos, []);
       for(let direction of Direction.allDirections()) {
         let tempPositions = [];
         let valid = true;

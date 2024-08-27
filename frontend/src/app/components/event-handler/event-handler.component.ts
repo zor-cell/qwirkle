@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import {Subject} from "rxjs";
 import {Tile} from "../../classes/tile";
+import {Move} from "../../classes/move";
 
 @Component({
   selector: 'app-event-handler',
@@ -8,26 +9,31 @@ import {Tile} from "../../classes/tile";
   styleUrl: './event-handler.component.css'
 })
 export class EventHandlerComponent {
-  placeTilesEvent: Subject<Tile[]> = new Subject<Tile[]>();
-  selectTileInStackEvent: Subject<Tile> = new Subject<Tile>();
-  selectTilesInHandEvent: Subject<Tile[]> = new Subject<Tile[]>();
-  handTilesInHandEvent: Subject<Tile[]> = new Subject<Tile[]>();
+  placeTileFromGameEvent: Subject<Tile[]> = new Subject<Tile[]>();
+  selectTileFromStackEvent: Subject<Tile> = new Subject<Tile>();
+  selectTilesFromHandEvent: Subject<Tile[]> = new Subject<Tile[]>();
+  handTilesFromHandEvent: Subject<Tile[]> = new Subject<Tile[]>();
+  bestMoveFromGameEvent: Subject<Move> = new Subject<Move>();
 
   constructor() {}
 
-  getPlaceTilesEvent(placedTiles: Tile[]) {
-    this.placeTilesEvent.next(placedTiles);
+  getPlaceTilesFromGameEvent(placedTiles: Tile[]) {
+    this.placeTileFromGameEvent.next(placedTiles);
   }
 
-  getSelectTileInStackEvent(selectedTile: Tile) {
-    this.selectTileInStackEvent.next(selectedTile);
+  getSelectTileFromStackEvent(selectedTile: Tile) {
+    this.selectTileFromStackEvent.next(selectedTile);
   }
 
-  getSelectTilesInHandEvent(selectedTiles: Tile[]) {
-    this.selectTilesInHandEvent.next(selectedTiles);
+  getSelectTilesFromHandEvent(selectedTiles: Tile[]) {
+    this.selectTilesFromHandEvent.next(selectedTiles);
   }
 
-  getHandTilesInHandEvent(handTiles: Tile[]) {
-    this.handTilesInHandEvent.next(handTiles);
+  getHandTilesFromHandEvent(handTiles: Tile[]) {
+    this.handTilesFromHandEvent.next(handTiles);
+  }
+
+  getBestMoveFromGameEvent(bestMove: Move) {
+    this.bestMoveFromGameEvent.next(bestMove);
   }
 }

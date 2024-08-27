@@ -52,6 +52,10 @@ export class Direction {
         return new Direction(-this.di, -this.dj);
     }
 
+    copy(): Direction {
+        return new Direction(this.d);
+    }
+
     rotate90Deg(): Direction {
         if(this.d === SimpleDirection.UP) return new Direction(SimpleDirection.RIGHT);
         else if(this.d === SimpleDirection.RIGHT) return new Direction(SimpleDirection.DOWN);
